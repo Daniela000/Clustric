@@ -1,0 +1,16 @@
+MATRIX_FILE: "../paper/new_score_lisbon_test/matrices/trics/3TPS/out_1_DistanceMatrix.csv"
+SNAPSHOTS_FILE: "../snapshots/no_nan_aipals_2023_snapshots_independent.csv"
+OUTPUT_FOLDER: "clustric_test/"
+N_CLUST: 4  
+MIN_APP: 3             
+DATA_PREPROCESSING: True
+REF_FEATURE: "REF"
+
+TEMPORAL_FEATURES: {
+                  'ALSFRSb':'categorical', 
+                  'ALSFRSsUL':'categorical', 
+                  'ALSFRSsLL':'categorical', 
+                  'R':'categorical', 
+                  'ALSFRS-R':'categorical', 
+                  'MITOS-stage':'categorical'
+                  }
