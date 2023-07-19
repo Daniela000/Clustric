@@ -12,23 +12,17 @@ import os
 import errno
 import pacmap
 from itertools import zip_longest
-import constants
+import triclustering.constants as constants
 from pathlib import Path
 
-def parse_command_line():
-    n_clust = 4
+def parse_data():
     try:
-        matrix_name = sys.argv[1] # matrix file
-        snapshots_name = sys.argv[2] # snapshots file
-        output_name = sys.argv[3] # output folder name
+        n = constants.MIN_APP
+        matrix_name = constants.MATRICES_DIR_T + "{}TPS/out_1_DistanceMatrix.csv".format(n)
+        snapshots_name = constants.DATA_FILE # snapshots file
         
-        if len(sys.argv) == 5:
-            n_clust = int(sys.argv[4])
-
-        os.mkdir(output_name)
-    except IndexError:
-        print("Must have at least three arguments: <distance_matrix_file> <snapshots_file> <output_folder_name> [n_cluster]")
-        exit(1)
+        Path(constants.TRAJECTORY_DIR).mkdir(parents=True, exist_ok=True) 
+        Path(constants.VISUALIZATION_DIR).mkdir(parents=True, exist_ok=True) 
     except OSError as exc:
         if exc.errno != errno.EEXIST:
             raise
@@ -38,55 +32,20 @@ def parse_command_line():
     n_trics = len(data.columns) + 1
     patients = pd.read_csv(snapshots_name)
 
-    # remove patietns with less than 3 appointments
-    patients.dropna(subset = 'ALSFRS-R', inplace = True)
-    counts = patients['REF'].value_counts()
-    mask = counts >= 3
-    filtered_patients = patients[patients['REF'].isin(counts[mask].index)]
-    filtered_patients = filtered_patients.groupby('REF').first().reset_index()
-
-    return data, patients,filtered_patients, output_name, n_clust
-
-def parse_config_file():
-    constants.get_config(sys.argv[1])
-    try:
-        matrix_name = constants.MATRIX_FILE # matrix file
-        snapshots_name = constants.SNAPSHOTS_FILE # snapshots file
-        output_name = constants.OUTPUT_FOLDER# output folder name
-        n_clust = constants.N_CLUST 
-        features =  list(constants.TEMPORAL_FEATURES.keys())
-        ref_feature = constants.REF_FEATURE
-        os.mkdir(output_name)
-    except OSError as exc:
-        try:
-            Path(output_name + 'trajectories/').mkdir(parents=True, exist_ok=True) 
-            Path(output_name + 'visualizations/').mkdir(parents=True, exist_ok=True) 
-        except OSError as exc:
-            if exc.errno != errno.EEXIST:
-                raise
-
-    data = pd.read_csv(matrix_name)
-    data.drop(data.columns[[-1,]], axis=1, inplace=True) # drop evolution column
-    n_trics = len(data.columns) + 1
-    patients = pd.read_csv(snapshots_name)
-
-    if constants.DATA_PREPROCESSING:
-        #patients.dropna(subset = list(constants.MAIN_FEATURE.keys()), inplace = True)
-
-        # remove patietns with less than MIN_APP appointments
-        counts = patients[ref_feature].value_counts()
-        mask = counts >= constants.MIN_APP
-        filtered_patients = patients[patients[ref_feature].isin(counts[mask].index)]
-        filtered_patients = filtered_patients.groupby(ref_feature).first().reset_index()
+    # remove patietns with less than MIN_APP appointments
+    counts = patients[constants.REF_FEATURE].value_counts()
+    mask = counts >= constants.MIN_APP
+    filtered_patients = patients[patients[constants.REF_FEATURE].isin(counts[mask].index)]
+    filtered_patients = filtered_patients.groupby(constants.REF_FEATURE).first().reset_index()
     
-    return data, patients,filtered_patients, output_name, n_clust, features, ref_feature
+    return data, patients,filtered_patients
 
-def get_color_list(n_clust):
+def get_color_list():
     colormap = plt.cm.get_cmap('rainbow')
-    colors = [colormap(i/n_clust) for i in range(n_clust)]
+    colors = [colormap(i/constants.N_CLUST ) for i in range(constants.N_CLUST )]
     return colors
 
-def tsne(tempData, labels, output_name, n_clust):
+def tsne(tempData, labels):
     """
     Computes the tsne dimensionality reduction 
 
@@ -95,9 +54,8 @@ def tsne(tempData, labels, output_name, n_clust):
     tempData: data to plot
     labels: labels of each patient in data
     output_name: name of the output folder
-    n_clust: number of clusters in the data
     """
-    colors = get_color_list(n_clust)
+    colors = get_color_list()
     tsne = TSNE(n_components=2, random_state=0)
     X_2d = tsne.fit_transform(tempData)
 
@@ -112,9 +70,9 @@ def tsne(tempData, labels, output_name, n_clust):
         data = new,
         legend = "full"
 )
-    fig.savefig(output_name + 'visualizations/tsne.pdf')
+    fig.savefig(constants.VISUALIZATION_DIR + 'tsne.pdf')
 
-def pacmap_func(tempData, labels,output_name, n_clust):
+def pacmap_func(tempData, labels):
     """
     Computes the pacmap dimensionality reduction 
 
@@ -123,10 +81,8 @@ def pacmap_func(tempData, labels,output_name, n_clust):
     tempData: data to plot
     labels: labels of each patient in data
     output_name: name of the output folder
-    n_clust: number of clusters in the data
     """
-    colors = get_color_list(n_clust)
-    print(colors)
+    colors = get_color_list()
     embedding = pacmap.PaCMAP(n_components=2, random_state=0)
     X_2d = embedding.fit_transform(tempData.values)
 
@@ -143,17 +99,15 @@ def pacmap_func(tempData, labels,output_name, n_clust):
         legend = "full"
     )
 
-    plt.savefig(output_name + 'visualizations/pacmap.pdf')
+    plt.savefig(constants.VISUALIZATION_DIR + 'pacmap.pdf')
 
-def hierarchical_clustering(data,output_name, n_clust):
+def hierarchical_clustering(data):
     """
     Computes the agglomerative clustering 
 
     Parameters
     ----------
     data: data to cluster
-    output_name: name of the output folder
-    n_clust: number of clusters in the data
     """
     plt.ylabel('distance')
     clusters = shc.linkage(data, method="ward", metric="euclidean")
@@ -161,9 +115,9 @@ def hierarchical_clustering(data,output_name, n_clust):
     shc.dendrogram(clusters, p = 20, truncate_mode = 'lastp', # show only the last p merged clusters
                 show_leaf_counts = False) 
     plt.gcf()
-    plt.savefig(output_name + '/dendrogram.pdf')
+    plt.savefig(constants.TOP_FOLDER + '/dendrogram.pdf')
 
-    Ward_model = AgglomerativeClustering(n_clusters= n_clust, metric='euclidean', linkage='ward')
+    Ward_model = AgglomerativeClustering(n_clusters= constants.N_CLUST, metric='euclidean', linkage='ward')
     Ward_model.fit(data)
 
     print('Silhouette Score: ', silhouette_score(data, Ward_model.labels_, metric='euclidean'))
@@ -185,24 +139,22 @@ def format_mogp_axs(ax, max_x=8, x_step=1.0, y_label=[0,24,48], y_minmax=(-3, 53
     return ax
 
 
-def simple_trajectories(clusters, n_clust, features, ref_feature,output_name):
+def simple_trajectories(clusters):
     """
     Computes the trajectories of each clustering in the temporal features
 
     Parameters
     ----------
     clusters: list of n_clust lists with each list comprising the snapshots of the patients in the corresponding cluster
-    output_name: name of the output folder
-    n_clust: number of clusters in the data
     """
-    colors = get_color_list(n_clust)
+    colors = get_color_list()
 
-    for feature in features:
+    for feature in list(constants.TEMPORAL_FEATURES.keys()):
         fig, ax = plt.subplots()
 
         max_val =0
-        for j in range(n_clust):
-            prg = clusters[j].groupby(ref_feature)[feature]           
+        for j in range(constants.N_CLUST):
+            prg = clusters[j].groupby(constants.REF_FEATURE)[feature]           
 
             lst = []
             for _, group in prg:
@@ -242,4 +194,4 @@ def simple_trajectories(clusters, n_clust, features, ref_feature,output_name):
         plt.xlabel("Appointments")
         plt.ylabel(str(feature))
         plt.legend()
-        fig.savefig( output_name + 'trajectories/'+ str(feature) + '.pdf')
+        fig.savefig(constants.TRAJECTORY_DIR + str(feature) + '.pdf')
