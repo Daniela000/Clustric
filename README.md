@@ -1,4 +1,4 @@
-# Clustric
+# ClusTric
 
 Identifying disease progression patterns and groups of similar progressors is becoming relevant to the understanding of disease behaviours and to improving personalized treatments. Amyotrophic Lateral Sclerosis (ALS) is a neurodegenerative disease with patients manifesting heterogeneous temporal progressions. In this study we propose a novel approach, ClusTric, to learn comprehensive patterns from triclustering and use these patterns as features to obtain groups of patients with similar progressions. This is achieved from an agglomerative clustering process. We performed experiments using the Lisbon ALS clinic dataset containing data from patients' follow-ups. Our method presented relevant results regarding the flexibility of the analysis against the state-of-the-art. This methodology can be applied to the 3W data of any disease, obtaining similar results.
 

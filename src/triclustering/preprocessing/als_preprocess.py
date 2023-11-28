@@ -21,7 +21,7 @@ def df_to_dict(data, discretize_prog_rate=False):
             id_paciente_glob = ref
             time_counter = 0
 
-        del data_dict[k]['REF']
+        del data_dict[k][constants.REF_FEATURE]
         if ref not in final_dict:
             final_dict[ref] = {time_counter: data_dict[k]}
         else:

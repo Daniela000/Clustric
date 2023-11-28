@@ -9,7 +9,7 @@ from pathlib import Path
 def load_data_baselines(features):
     infile = constants.DATA_FILE
 
-    data = pd.read_csv(infile)
+    data = pd.read_csv(infile, low_memory=False)
 
     data['Evolution'] = 'No'
     data = data[features]
