@@ -159,8 +159,10 @@ def simple_trajectories(clusters):
             lst = []
             for _, group in prg:
                 lst.append(group.values)
-            
-            transposed = [list(filter(None,i)) for i in zip_longest(*lst)]
+                
+            max_len = max(len(i) for i in lst)
+            transposed = [[i[o] for i in lst if len(i) > o] for o in range(max_len)]
+            #transposed = [list(filter(None,i)) for i in zip_longest(*lst)]
 
             n_samples = []
   
